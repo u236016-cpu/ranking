@@ -1,37 +1,38 @@
-name: auto-update
+name: Auto Ranking Update & Weekly Content
 
 on:
-  schedule:
-    - cron: '0 0 * * 1'  # 毎週月曜0時 UTC
   workflow_dispatch:
-
-permissions:
-  contents: write
+  schedule:
+    - cron: '0 12 * * 1' # 毎週月曜 12:00 UTC
 
 jobs:
-  run:
+  update_ranking:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # 日本語＋英数字フォントをインストール
-      - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-dejavu
-
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - run: pip install pandas requests beautifulsoup4 matplotlib pillow
-
-      - run: python main.py
-
-      - name: Commit & Push
+      - name: Install dependencies
         run: |
-          git config --global user.name "bot"
-          git config --global user.email "bot@example.com"
-          git add .
-          git commit -m "update" || echo "no change"
+          python -m pip install --upgrade pip
+          pip install pandas requests beautifulsoup4 dataframe-image matplotlib pillow
+
+      - name: Run main.py
+        run: python main.py
+
+      - name: Update README
+        run: python update_readme.py
+
+      - name: Commit and push updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add weekly_tables/*.png score.gif score_history.csv README.md
+          git commit -m "Weekly ranking update" || echo "No changes to commit"
           git push
