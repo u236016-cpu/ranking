@@ -2,7 +2,7 @@ name: Update Weekly Ranking
 
 on:
   schedule:
-    - cron: '0 3 * * 2'
+    - cron: '0 3 * * 2'  # JST 火曜 12:00 = UTC 3:00
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -19,18 +20,20 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y fonts-ipafont-gothic
         python -m pip install --upgrade pip
         pip install pandas matplotlib beautifulsoup4 dataframe-image requests
 
     - name: Run ranking update
-      run: python main.py
+      run: |
+        python main.py
 
     - name: Update README with latest images
       run: |
-        cp README.md README.md.bak
-        grep -v '!\[最新順位表\]' README.md.bak | grep -v '!\[正解数推移\]' > README.md
+        # 古い画像リンク削除
+        grep -v '!\[最新順位表\]' README.md | grep -v '!\[正解数推移\]' > README.md.tmp
+        mv README.md.tmp README.md
+
+        # 最新画像差し込み
         echo "![最新順位表](weekly_tables/ranking_table_$(date +'%Y-%m-%d').png)" >> README.md
         echo "![正解数推移](score_history_plot.png)" >> README.md
 
@@ -38,6 +41,6 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add weekly_tables/*.png score_history.csv README.md
+        git add weekly_tables/*.png score_history_plot.png README.md
         git commit -m "Weekly ranking update" || echo "No changes to commit"
         git push
