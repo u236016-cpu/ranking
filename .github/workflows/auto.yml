@@ -19,6 +19,8 @@ jobs:
       # ------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # ------------------------
       # 2️⃣ Pythonセットアップ
@@ -45,7 +47,7 @@ jobs:
           pip install pandas requests beautifulsoup4 dataframe-image matplotlib pillow
 
       # ------------------------
-      # 5️⃣ main.py 実行（デバッグ print付）
+      # 5️⃣ main.py 実行（デバッグ print付き）
       # ------------------------
       - name: Run main.py
         run: |
@@ -61,12 +63,12 @@ jobs:
           python update_readme.py
 
       # ------------------------
-      # 7️⃣ commit & push
+      # 7️⃣ 安全な commit & push
       # ------------------------
       - name: Commit and push updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add weekly_tables/*.png score.gif score_history.csv README.md
-          git commit -m "Weekly ranking update" || echo "No changes to commit"
+          git add weekly_tables/*.png score.gif score_history.csv README.md || echo "Nothing to add"
+          git diff-index --quiet HEAD || git commit -m "Weekly ranking update"
           git push
