@@ -47,7 +47,7 @@ jobs:
           pip install pandas requests beautifulsoup4 dataframe-image matplotlib pillow
 
       # ------------------------
-      # 5️⃣ main.py 実行（デバッグ print付き）
+      # 5️⃣ main.py 実行
       # ------------------------
       - name: Run main.py
         run: |
@@ -63,21 +63,24 @@ jobs:
           python update_readme.py
 
       # ------------------------
-      # 7️⃣ 安全な commit & push
+      # 7️⃣ 安全な commit & push（GITHUB_TOKEN 使用）
       # ------------------------
       - name: Commit and push updates
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # ワイルドカードが空でもエラーにならないように
-          shopt -s nullglob
-          files=(weekly_tables/*.png score.gif score_history.csv README.md)
+          files=()
+          [[ -f score_history.csv ]] && files+=("score_history.csv")
+          [[ -f score.gif ]] && files+=("score.gif")
+          [[ -d weekly_tables ]] && files+=(weekly_tables/*)
+          [[ -f README.md ]] && files+=("README.md")
 
           if [ ${#files[@]} -gt 0 ]; then
               git add "${files[@]}"
               git diff-index --quiet HEAD || git commit -m "Weekly ranking update"
-              git push
+              git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
           else
               echo "No files to commit"
           fi
