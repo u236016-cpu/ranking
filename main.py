@@ -2,15 +2,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-import dataframe_image as dfi
+import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
-
-# 日本語フォント設定（GitHub Actions対応）
-plt.rcParams["font.family"] = "IPAPGothic"
+import matplotlib.font_manager as fm
 
 # ------------------------
-# ① 現在順位取得
+# フォント設定（日本語対応）
+# ------------------------
+plt.rcParams['font.family'] = 'IPAexGothic'  # pip install ipaexg
+
+# ------------------------
+# ① 現在順位取得（Yahoo!野球）
 # ------------------------
 def fetch_current_ranks():
     url = "https://baseball.yahoo.co.jp/npb/standings/"
@@ -30,7 +33,8 @@ def fetch_current_ranks():
 def load_prediction_csv(csv_path="ranking_export.csv"):
     columns = ["名前"] + [f"セ{i+1}" for i in range(6)] + [f"パ{i+1}" for i in range(6)]
     df_pred = pd.read_csv(csv_path, header=None, names=columns)
-    # チーム名正規化
+
+    # チーム名正規化（DeNAなど）
     team_replace = {
         "横浜": "DeNA",
         "ＤｅＮＡ": "DeNA",
@@ -41,7 +45,7 @@ def load_prediction_csv(csv_path="ranking_export.csv"):
     return df_pred
 
 # ------------------------
-# ③ 順位表作成・PNG出力
+# ③ 順位表作成・画像出力
 # ------------------------
 def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_tables/ranking_table.png"):
     names = df_pred["名前"].tolist()
@@ -50,6 +54,7 @@ def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_table
 
     row_labels = [f"セ{i+1}" for i in range(6)] + [f"パ{i+1}" for i in range(6)]
     pred_matrix.index = row_labels
+
     pred_matrix.insert(0, "現在順位", current_ranks)
 
     correct_counts = []
@@ -84,15 +89,17 @@ def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_table
     print(f"{output_path} に保存しました")
 
 # ------------------------
-# ④ 正解数履歴読み込み or 更新
+# ④ 正解数履歴読み込み or 新規作成
 # ------------------------
 def load_or_create_score_history(csv_path="score_history.csv", current_date=None, correct_counts=None, names=None):
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
     else:
         df = pd.DataFrame()
+
     if current_date is None or correct_counts is None or names is None:
         return df
+
     new_row = pd.Series(data=correct_counts, index=names)
     new_row.name = pd.to_datetime(current_date)
     df = pd.concat([df, new_row.to_frame().T])
@@ -103,20 +110,24 @@ def load_or_create_score_history(csv_path="score_history.csv", current_date=None
     return df
 
 # ------------------------
-# ⑤ 正解数推移グラフ作成
+# ⑤ 正解数推移グラフ作成・PNG出力
 # ------------------------
 def create_score_history_plot(df_score_history, output_path="score_history_plot.png"):
     fig, ax = plt.subplots(figsize=(10,5))
+
     for user in df_score_history.columns:
         ax.plot(df_score_history.index, df_score_history[user], marker='o', label=user)
+
     ax.set_ylim(0, 12)
     ax.set_yticks(range(0,13))
     ax.set_ylabel("正解数")
     ax.set_xlabel("日付")
     ax.set_title("予想 正解数 推移")
     ax.legend(loc="upper left")
-    # 日付表示を mm/dd のみに変更
-    ax.set_xticklabels([d.strftime("%m/%d") for d in df_score_history.index])
+
+    # 横軸日付を mm/dd 表示
+    ax.xaxis.set_major_formatter(plt.FixedFormatter(df_score_history.index.strftime('%m/%d')))
+
     plt.xticks(rotation=45)
     plt.grid(True)
     plt.tight_layout()
@@ -125,7 +136,7 @@ def create_score_history_plot(df_score_history, output_path="score_history_plot.
     print(f"{output_path} に保存しました")
 
 # ------------------------
-# メイン
+# メイン処理
 # ------------------------
 def main():
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -140,11 +151,11 @@ def main():
 
     # 正解数計算
     correct_counts = []
-    for idx, row in df_pred.iterrows():
-        count = sum(row[1:].replace({"横浜":"DeNA","ＤｅＮＡ":"DeNA","DeNa":"DeNA","日ハム":"日本ハム"}) == current_ranks)
+    for col in df_pred.columns[1:]:
+        count = sum(df_pred[col] == current_ranks)
         correct_counts.append(count)
 
-    # 正解数履歴更新
+    # 正解数履歴CSV更新
     score_history_path = "score_history.csv"
     df_score_history = load_or_create_score_history(score_history_path, current_date, correct_counts, names)
 
