@@ -2,12 +2,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-import dataframe_image as dfi  # pip install dataframe-image
+import dataframe_image as dfi
 import os
 from datetime import datetime
 import matplotlib
-matplotlib.rcParams['font.family'] = 'IPAexGothic'
 
+# 日本語フォント指定（IPAPGothic を使う）
+matplotlib.rcParams['font.family'] = 'IPAPGothic'
+matplotlib.rcParams['axes.unicode_minus'] = False
 # ------------------------
 # ① 現在順位取得（Yahoo!野球）
 # ------------------------
