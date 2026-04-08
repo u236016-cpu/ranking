@@ -1,0 +1,28 @@
+name: auto-update
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - run: pip install pandas requests beautifulsoup4 matplotlib pillow
+
+      - run: python main.py
+
+      - run: |
+          git config --global user.name "bot"
+          git config --global user.email "bot@example.com"
+          git add .
+          git commit -m "update" || echo "no change"
+          git push
