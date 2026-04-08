@@ -1,15 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 import requests
 from bs4 import BeautifulSoup
-import dataframe_image as dfi
+import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
 import matplotlib
+matplotlib.rcParams['font.family'] = 'IPAPGothic'  # Windowsなら 'Yu Gothic' などでも可
+matplotlib.rcParams['axes.unicode_minus'] = False  # マイナス表示が文字化けしないように
 
-# 日本語フォント指定（IPAPGothic を使う）
-matplotlib.rcParams['font.family'] = 'IPAPGothic'
-matplotlib.rcParams['axes.unicode_minus'] = False
 # ------------------------
 # ① 現在順位取得（Yahoo!野球）
 # ------------------------
@@ -110,23 +110,58 @@ def load_or_create_score_history(csv_path="score_history.csv", current_date=None
     return df
 
 # ------------------------
-# ⑤ 正解数推移グラフ作成・PNG出力
+# ⑤ 正解数推移グラフ作成・PNG出力（文字化け対応）
 # ------------------------
 def create_score_history_plot(df_score_history, output_path="score_history_plot.png"):
+    import matplotlib.dates as mdates
+
+    # フォント設定（環境に合わせて変更）
+    matplotlib.rcParams['font.family'] = 'Yu Gothic'  # Windowsなら 'Yu Gothic'
+    matplotlib.rcParams['axes.unicode_minus'] = False
+
+    # 日付型に変換
+    df_score_history.index = pd.to_datetime(df_score_history.index)
+
     fig, ax = plt.subplots(figsize=(10,5))
 
-    for user in df_score_history.columns:
-        ax.plot(df_score_history.index, df_score_history[user], marker='o', label=user)
+    # カラーマップ準備
+    colors = plt.cm.tab20.colors  # 最大20色
+
+    for i, user in enumerate(df_score_history.columns):
+        color = colors[i % 20]
+        ax.plot(
+            df_score_history.index,
+            df_score_history[user],
+            linestyle='-',
+            linewidth=1.5,
+            marker='o',
+            markersize=6,
+            alpha=0.7,
+            color=color,
+            label=user
+        )
+        # 最後の点に数値表示
+        ax.text(
+            df_score_history.index[-1],
+            df_score_history[user].iloc[-1],
+            str(df_score_history[user].iloc[-1]),
+            fontsize=9,
+            color=color,
+            verticalalignment='bottom',
+            horizontalalignment='left'
+        )
 
     ax.set_ylim(0, 12)
     ax.set_yticks(range(0,13))
     ax.set_ylabel("正解数")
     ax.set_xlabel("日付")
     ax.set_title("予想 正解数 推移")
-    ax.legend(loc="upper left")
 
-    # 日付表示を mm/dd に変更
-    ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%m/%d'))
+    ax.legend(loc="upper left", fontsize=9)
+
+    # 日付表示
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
 
     plt.xticks(rotation=45)
     plt.grid(True)
@@ -134,7 +169,7 @@ def create_score_history_plot(df_score_history, output_path="score_history_plot.
     plt.savefig(output_path)
     plt.close()
     print(f"{output_path} に保存しました")
-
+    
 # ------------------------
 # メイン処理
 # ------------------------
@@ -149,7 +184,7 @@ def main():
 
     names = df_pred["名前"].tolist()
 
-    # 正解数計算
+    # 正解数計算（安全に長さ一致）
     correct_counts = []
     for idx, row in df_pred.iterrows():
         pred_list = row[1:].tolist()
