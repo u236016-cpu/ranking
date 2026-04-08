@@ -69,6 +69,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add weekly_tables/*.png score.gif score_history.csv README.md || echo "Nothing to add"
-          git diff-index --quiet HEAD || git commit -m "Weekly ranking update"
-          git push
+
+          # ワイルドカードが空でもエラーにならないように
+          shopt -s nullglob
+          files=(weekly_tables/*.png score.gif score_history.csv README.md)
+
+          if [ ${#files[@]} -gt 0 ]; then
+              git add "${files[@]}"
+              git diff-index --quiet HEAD || git commit -m "Weekly ranking update"
+              git push
+          else
+              echo "No files to commit"
+          fi
