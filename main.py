@@ -6,10 +6,9 @@ from bs4 import BeautifulSoup
 import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
-
-# フォント設定（Ubuntu / GitHub Actions でも日本語対応）
-matplotlib.rcParams['font.family'] = 'IPAPGothic'
-matplotlib.rcParams['axes.unicode_minus'] = False  # マイナス文字化け防止
+import matplotlib
+matplotlib.rcParams['font.family'] = 'IPAPGothic'  # Windowsなら 'Yu Gothic' などでも可
+matplotlib.rcParams['axes.unicode_minus'] = False  # マイナス表示が文字化けしないように
 
 # ------------------------
 # ① 現在順位取得（Yahoo!野球）
@@ -46,7 +45,7 @@ def load_prediction_csv(csv_path="ranking_export.csv"):
 # ------------------------
 # ③ 順位表作成・画像出力
 # ------------------------
-def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_tables/ranking_table.jpeg"):
+def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_tables/ranking_table.jpeg", current_date=None):
     names = df_pred["名前"].tolist()
     pred_matrix = df_pred.drop(columns="名前").T
     pred_matrix.columns = names
@@ -83,7 +82,9 @@ def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_table
     sorted_cols = ["現在順位"] + counts_row.sort_values(ascending=False).index.tolist()
     pred_matrix = pred_matrix[sorted_cols]
 
-    styled = pred_matrix.style.apply(highlight_cells, axis=1)
+    # タイトル（更新日）をキャプションとして追加
+    caption = f"順位表（更新日: {current_date}）"
+    styled = pred_matrix.style.apply(highlight_cells, axis=1).set_caption(caption)
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     dfi.export(styled, output_path)
@@ -111,51 +112,29 @@ def load_or_create_score_history(csv_path="score_history.csv", current_date=None
     return df
 
 # ------------------------
-# ⑤ 正解数推移グラフ作成・JPEG出力（文字化け対応）
+# ⑤ 正解数推移グラフ作成・PNG出力（文字化け対応）
 # ------------------------
-def create_score_history_plot(df_score_history, output_path="score_history_plot.jpeg"):
+def create_score_history_plot(df_score_history, output_path="score_history_plot.jpeg", current_date=None):
     import matplotlib.dates as mdates
 
-    # 日付型に変換
+    matplotlib.rcParams['font.family'] = 'Yu Gothic'  # Windowsなら 'Yu Gothic'
+    matplotlib.rcParams['axes.unicode_minus'] = False
+
     df_score_history.index = pd.to_datetime(df_score_history.index)
-
     fig, ax = plt.subplots(figsize=(10,5))
-
-    # カラーマップ準備
-    colors = plt.cm.tab20.colors  # 最大20色
+    colors = plt.cm.tab20.colors
 
     for i, user in enumerate(df_score_history.columns):
         color = colors[i % 20]
-
-        ax.plot(
-            df_score_history.index,
-            df_score_history[user],
-            linestyle='-',
-            linewidth=2,
-            marker='o',
-            markersize=6,
-            color=color,
-            label=user
-        )
-
-        # 最後の点に数値表示
-        ax.text(
-            df_score_history.index[-1],
-            df_score_history[user].iloc[-1],
-            str(df_score_history[user].iloc[-1]),
-            fontsize=9,
-            color=color,
-            verticalalignment='bottom',
-            horizontalalignment='left'
-        )
+        ax.plot(df_score_history.index, df_score_history[user], linestyle='-', linewidth=2, marker='o', markersize=6, color=color, label=user)
+        ax.text(df_score_history.index[-1], df_score_history[user].iloc[-1], str(df_score_history[user].iloc[-1]), fontsize=9, color=color, verticalalignment='bottom', horizontalalignment='left')
 
     ax.set_ylim(0, 12)
     ax.set_yticks(range(0,13))
     ax.set_ylabel("正解数")
     ax.set_xlabel("日付")
-    ax.set_title("予想 正解数 推移")
+    ax.set_title(f"予想 正解数 推移（更新日: {current_date}）")
     ax.legend(loc="upper left", fontsize=9)
-
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
     ax.xaxis.set_major_locator(mdates.AutoDateLocator())
 
@@ -174,13 +153,13 @@ def main():
     current_ranks = fetch_current_ranks()
     df_pred = load_prediction_csv()
 
-    # 順位表JPEG作成
+    # 順位表PNG作成
     ranking_table_path = f"weekly_tables/ranking_table_{current_date}.jpeg"
-    create_ranking_table_image(current_ranks, df_pred, ranking_table_path)
+    create_ranking_table_image(current_ranks, df_pred, ranking_table_path, current_date)
 
     names = df_pred["名前"].tolist()
 
-    # 正解数計算
+    # 正解数計算（安全に長さ一致）
     correct_counts = []
     for idx, row in df_pred.iterrows():
         pred_list = row[1:].tolist()
@@ -193,7 +172,7 @@ def main():
 
     # 正解数推移グラフ作成
     score_plot_path = "score_history_plot.jpeg"
-    create_score_history_plot(df_score_history, score_plot_path)
+    create_score_history_plot(df_score_history, score_plot_path, current_date)
 
 if __name__ == "__main__":
     main()
