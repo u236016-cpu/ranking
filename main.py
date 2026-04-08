@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
+import matplotlib
+matplotlib.rcParams['font.family'] = 'IPAexGothic'
 
 # ------------------------
 # ① 現在順位取得（Yahoo!野球）
