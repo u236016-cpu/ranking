@@ -101,7 +101,6 @@ print(f"{png_path} に保存しました")
 # ------------------------
 # ⑨ 累積スコア計算
 # ------------------------
-# CSV 形式で履歴を保存しておく
 history_file = "score_history.csv"
 score_rows = []
 for col in pred_matrix.columns[1:]:
