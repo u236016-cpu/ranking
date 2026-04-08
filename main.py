@@ -7,8 +7,7 @@ import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
 import matplotlib
-matplotlib.rcParams['font.family'] = 'IPAPGothic'  # Windowsなら 'Yu Gothic' などでも可
-matplotlib.rcParams['axes.unicode_minus'] = False  # マイナス表示が文字化けしないように
+
 
 # ------------------------
 # ① 現在順位取得（Yahoo!野球）
