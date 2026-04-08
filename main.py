@@ -2,14 +2,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
-import dataframe_image as dfi
+import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
 
-# 日本語フォント設定（UbuntuのIPAゴシック）
-plt.rcParams["font.family"] = "IPAGothic"
-
-# ------------------------ 現在順位取得
+# ------------------------
+# ① 現在順位取得（Yahoo!野球）
+# ------------------------
 def fetch_current_ranks():
     url = "https://baseball.yahoo.co.jp/npb/standings/"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -20,29 +19,39 @@ def fetch_current_ranks():
 
     central = [row.find_all("td")[1].text.strip() for row in tables[0].find_all("tr")[1:]]
     pacific = [row.find_all("td")[1].text.strip() for row in tables[1].find_all("tr")[1:]]
-    return central + pacific
+    return central + pacific  # 合計12チーム
 
-# ------------------------ CSV読み込み
+# ------------------------
+# ② CSV読み込み（順位予想データ）
+# ------------------------
 def load_prediction_csv(csv_path="ranking_export.csv"):
     columns = ["名前"] + [f"セ{i+1}" for i in range(6)] + [f"パ{i+1}" for i in range(6)]
     df_pred = pd.read_csv(csv_path, header=None, names=columns)
+
+    # チーム名正規化
     team_replace = {
         "横浜": "DeNA",
         "ＤｅＮＡ": "DeNA",
         "DeNa": "DeNA",
         "日ハム": "日本ハム"
     }
-    return df_pred.replace(team_replace)
+    df_pred = df_pred.replace(team_replace)
+    return df_pred
 
-# ------------------------ 順位表作成
+# ------------------------
+# ③ 順位表作成・画像出力
+# ------------------------
 def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_tables/ranking_table.png"):
     names = df_pred["名前"].tolist()
     pred_matrix = df_pred.drop(columns="名前").T
     pred_matrix.columns = names
+
     row_labels = [f"セ{i+1}" for i in range(6)] + [f"パ{i+1}" for i in range(6)]
     pred_matrix.index = row_labels
+
     pred_matrix.insert(0, "現在順位", current_ranks)
 
+    # 正解数計算
     correct_counts = []
     for idx, row in df_pred.iterrows():
         pred_list = row[1:].tolist()
@@ -59,7 +68,10 @@ def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_table
             if col == "現在順位":
                 colors.append('')
             else:
-                colors.append('background-color: lightgreen' if row[col] == current_ranks[row_idx] else '')
+                if row[col] == current_ranks[row_idx]:
+                    colors.append('background-color: lightgreen')
+                else:
+                    colors.append('')
         return colors
 
     counts_row = pred_matrix.loc["正解数", pred_matrix.columns[1:]]
@@ -67,11 +79,14 @@ def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_table
     pred_matrix = pred_matrix[sorted_cols]
 
     styled = pred_matrix.style.apply(highlight_cells, axis=1)
+    
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     dfi.export(styled, output_path)
     print(f"{output_path} に保存しました")
 
-# ------------------------ 正解数履歴
+# ------------------------
+# ④ 正解数履歴読み込み or 新規作成
+# ------------------------
 def load_or_create_score_history(csv_path="score_history.csv", current_date=None, correct_counts=None, names=None):
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
@@ -90,40 +105,60 @@ def load_or_create_score_history(csv_path="score_history.csv", current_date=None
     print(f"{csv_path} を更新しました")
     return df
 
-# ------------------------ 正解数推移グラフ
+# ------------------------
+# ⑤ 正解数推移グラフ作成・PNG出力
+# ------------------------
 def create_score_history_plot(df_score_history, output_path="score_history_plot.png"):
     fig, ax = plt.subplots(figsize=(10,5))
+
     for user in df_score_history.columns:
         ax.plot(df_score_history.index, df_score_history[user], marker='o', label=user)
+
     ax.set_ylim(0, 12)
     ax.set_yticks(range(0,13))
     ax.set_ylabel("正解数")
     ax.set_xlabel("日付")
     ax.set_title("予想 正解数 推移")
     ax.legend(loc="upper left")
+
+    # 日付表示を mm/dd に変更
+    ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%m/%d'))
+
     plt.xticks(rotation=45)
-    plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%m/%d"))
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
     print(f"{output_path} に保存しました")
 
-# ------------------------ メイン
+# ------------------------
+# メイン処理
+# ------------------------
 def main():
     current_date = datetime.now().strftime("%Y-%m-%d")
     current_ranks = fetch_current_ranks()
     df_pred = load_prediction_csv()
-    create_ranking_table_image(current_ranks, df_pred, f"weekly_tables/ranking_table_{current_date}.png")
+
+    # 順位表PNG作成
+    ranking_table_path = f"weekly_tables/ranking_table_{current_date}.png"
+    create_ranking_table_image(current_ranks, df_pred, ranking_table_path)
 
     names = df_pred["名前"].tolist()
-    correct_counts = [
-        sum([row[i+1] == current_ranks[i] for i in range(len(current_ranks))])
-        for idx, row in df_pred.iterrows()
-    ]
 
-    df_score_history = load_or_create_score_history("score_history.csv", current_date, correct_counts, names)
-    create_score_history_plot(df_score_history, "score_history_plot.png")
+    # 正解数計算
+    correct_counts = []
+    for idx, row in df_pred.iterrows():
+        pred_list = row[1:].tolist()
+        count = sum([pred_list[i] == current_ranks[i] for i in range(len(current_ranks))])
+        correct_counts.append(count)
+
+    # 正解数履歴CSV更新
+    score_history_path = "score_history.csv"
+    df_score_history = load_or_create_score_history(score_history_path, current_date, correct_counts, names)
+
+    # 正解数推移グラフ作成
+    score_plot_path = "score_history_plot.png"
+    create_score_history_plot(df_score_history, score_plot_path)
 
 if __name__ == "__main__":
     main()
