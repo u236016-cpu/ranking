@@ -2,11 +2,11 @@ name: auto-update
 
 on:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * 1'  # 毎週月曜0時 UTC
   workflow_dispatch:
 
 permissions:
-  contents: write   # ←これ追加
+  contents: write   # git push 用
 
 jobs:
   run:
@@ -14,6 +14,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      # 日本語フォントインストール
+      - run: sudo apt-get update && sudo apt-get install -y fonts-ipafont-gothic
 
       - uses: actions/setup-python@v5
         with:
