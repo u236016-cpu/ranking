@@ -2,7 +2,7 @@ name: Update Weekly Ranking
 
 on:
   schedule:
-    - cron: '0 3 * * 2'  # JST 火曜 12:00 = UTC 3:00
+    - cron: '0 3 * * 2'  # UTC 3:00 = JST 火曜 12:00
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pandas matplotlib beautifulsoup4 dataframe-image requests
+        pip install pandas matplotlib beautifulsoup4 dataframe-image requests ipaxegothic
 
     - name: Run ranking update
       run: |
@@ -29,14 +29,14 @@ jobs:
 
     - name: Update README with latest images
       run: |
-        # README バックアップ
-        cp README.md README.md.bak
+        DATE=$(date '+%Y-%m-%d')
+        # 古い順位表・正解数推移画像を削除
+        sed -i '/!\[最新順位表\]/d' README.md
+        sed -i '/!\[正解数推移\]/d' README.md
 
-        # 既存 README から old images を削除
-        grep -v '!\[最新順位表\]' README.md.bak | grep -v '!\[正解数推移\]' > README.md
-
-        # 最新画像差し込み
-        echo "![最新順位表](weekly_tables/ranking_table_$(date +'%Y-%m-%d').png)" >> README.md
+        # 最新画像を README に追記
+        echo "" >> README.md
+        echo "![最新順位表](weekly_tables/ranking_table_${DATE}.png)" >> README.md
         echo "![正解数推移](score_history_plot.png)" >> README.md
 
     - name: Commit and push updates
