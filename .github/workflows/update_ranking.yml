@@ -33,13 +33,13 @@ jobs:
       run: |
         cp README.md README.md.bak
         grep -v '!\[最新順位表\]' README.md.bak | grep -v '!\[正解数推移\]' > README.md
-        echo "![最新順位表](weekly_tables/ranking_table_$(date +'%Y-%m-%d').jpeg)" >> README.md
-        echo "![正解数推移](score_history_plot.jpeg)" >> README.md
+        echo "![最新順位表](weekly_tables/ranking_table_$(date +'%Y-%m-%d').svg)" >> README.md
+        echo "![正解数推移](score_history_plot.svg)" >> README.md
 
     - name: Commit and push updates
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add weekly_tables/*.jpeg score_history.csv score_history_plot.jpeg README.md
+        git add weekly_tables/*.svg score_history.csv score_history_plot.svg README.md
         git commit -m "Daily ranking update" || echo "No changes to commit"
         git push
