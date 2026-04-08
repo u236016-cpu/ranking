@@ -1,5 +1,9 @@
 name: Auto Ranking Update & Weekly Content
 
+env:
+  # Node.js 24 強制
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
   schedule:
@@ -10,25 +14,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ------------------------
+      # 1️⃣ リポジトリチェックアウト
+      # ------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ------------------------
+      # 2️⃣ Pythonセットアップ
+      # ------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      # ------------------------
+      # 3️⃣ OS 依存関係インストール
+      # ------------------------
+      - name: Install OS dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser fonts-ipafont-gothic
+
+      # ------------------------
+      # 4️⃣ Pythonライブラリインストール
+      # ------------------------
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas requests beautifulsoup4 dataframe-image matplotlib pillow
 
+      # ------------------------
+      # 5️⃣ main.py 実行（デバッグ print付）
+      # ------------------------
       - name: Run main.py
-        run: python main.py
+        run: |
+          echo "✅ main.py 実行開始"
+          python main.py || echo "❌ main.py でエラー発生"
 
+      # ------------------------
+      # 6️⃣ README 更新
+      # ------------------------
       - name: Update README
-        run: python update_readme.py
+        run: |
+          echo "✅ README 更新開始"
+          python update_readme.py
 
+      # ------------------------
+      # 7️⃣ commit & push
+      # ------------------------
       - name: Commit and push updates
         run: |
           git config user.name "github-actions[bot]"
