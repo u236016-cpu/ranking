@@ -112,10 +112,10 @@ def load_or_create_score_history(csv_path="score_history.csv", current_date=None
 # ------------------------
 # ⑤ 正解数推移グラフ作成・PNG出力（文字化け対応）
 # ------------------------
-def create_score_history_plot(df_score_history, output_path="score_history_plot.png"):
+def create_score_history_plot(df_score_history, output_path="score_history_plot.jpeg"):
     import matplotlib.dates as mdates
 
-    # フォント設定（環境に合わせて変更）
+    # フォント設定
     matplotlib.rcParams['font.family'] = 'Yu Gothic'  # Windowsなら 'Yu Gothic'
     matplotlib.rcParams['axes.unicode_minus'] = False
 
@@ -129,17 +129,18 @@ def create_score_history_plot(df_score_history, output_path="score_history_plot.
 
     for i, user in enumerate(df_score_history.columns):
         color = colors[i % 20]
+
         ax.plot(
             df_score_history.index,
             df_score_history[user],
             linestyle='-',
-            linewidth=1.5,
+            linewidth=2,   # 線は通常の太さ
             marker='o',
             markersize=6,
-            alpha=0.7,
             color=color,
             label=user
         )
+
         # 最後の点に数値表示
         ax.text(
             df_score_history.index[-1],
@@ -156,7 +157,6 @@ def create_score_history_plot(df_score_history, output_path="score_history_plot.
     ax.set_ylabel("正解数")
     ax.set_xlabel("日付")
     ax.set_title("予想 正解数 推移")
-
     ax.legend(loc="upper left", fontsize=9)
 
     # 日付表示
@@ -169,7 +169,8 @@ def create_score_history_plot(df_score_history, output_path="score_history_plot.
     plt.savefig(output_path)
     plt.close()
     print(f"{output_path} に保存しました")
-    
+
+
 # ------------------------
 # メイン処理
 # ------------------------
@@ -179,7 +180,7 @@ def main():
     df_pred = load_prediction_csv()
 
     # 順位表PNG作成
-    ranking_table_path = f"weekly_tables/ranking_table_{current_date}.png"
+    ranking_table_path = f"weekly_tables/ranking_table_{current_date}.jpeg"
     create_ranking_table_image(current_ranks, df_pred, ranking_table_path)
 
     names = df_pred["名前"].tolist()
@@ -196,7 +197,7 @@ def main():
     df_score_history = load_or_create_score_history(score_history_path, current_date, correct_counts, names)
 
     # 正解数推移グラフ作成
-    score_plot_path = "score_history_plot.png"
+    score_plot_path = "score_history_plot.jpeg"
     create_score_history_plot(df_score_history, score_plot_path)
 
 if __name__ == "__main__":
