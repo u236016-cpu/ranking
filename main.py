@@ -5,12 +5,6 @@ from bs4 import BeautifulSoup
 import dataframe_image as dfi  # pip install dataframe-image
 import os
 from datetime import datetime
-import matplotlib.font_manager as fm
-
-# ------------------------
-# フォント設定（日本語対応）
-# ------------------------
-plt.rcParams['font.family'] = 'IPAexGothic'  # pip install ipaexg
 
 # ------------------------
 # ① 現在順位取得（Yahoo!野球）
@@ -57,9 +51,11 @@ def create_ranking_table_image(current_ranks, df_pred, output_path="weekly_table
 
     pred_matrix.insert(0, "現在順位", current_ranks)
 
+    # 正解数計算
     correct_counts = []
-    for col in pred_matrix.columns[1:]:
-        count = sum(pred_matrix[col] == current_ranks)
+    for idx, row in df_pred.iterrows():
+        pred_list = row[1:].tolist()
+        count = sum([pred_list[i] == current_ranks[i] for i in range(len(current_ranks))])
         correct_counts.append(count)
     pred_matrix.loc["正解数"] = [""] + correct_counts
 
@@ -125,9 +121,6 @@ def create_score_history_plot(df_score_history, output_path="score_history_plot.
     ax.set_title("予想 正解数 推移")
     ax.legend(loc="upper left")
 
-    # 横軸日付を mm/dd 表示
-    ax.xaxis.set_major_formatter(plt.FixedFormatter(df_score_history.index.strftime('%m/%d')))
-
     plt.xticks(rotation=45)
     plt.grid(True)
     plt.tight_layout()
@@ -149,10 +142,11 @@ def main():
 
     names = df_pred["名前"].tolist()
 
-    # 正解数計算
+    # 正解数計算（安全に長さ一致）
     correct_counts = []
-    for col in df_pred.columns[1:]:
-        count = sum(df_pred[col] == current_ranks)
+    for idx, row in df_pred.iterrows():
+        pred_list = row[1:].tolist()
+        count = sum([pred_list[i] == current_ranks[i] for i in range(len(current_ranks))])
         correct_counts.append(count)
 
     # 正解数履歴CSV更新
