@@ -32,22 +32,19 @@ jobs:
     - name: Run script
       run: python main.py
 
-    - name: Update README (overwrite)
+    - name: Update README (overwrite - stable)
       run: |
         TODAY=$(date +'%Y-%m-%d')
 
-        cat << EOF > README.md
-# 📊 プロ野球順位予想
-
-最終更新日: ${TODAY}
-
-## 最新順位表
-![最新順位表](ranking_table.jpeg)
-
-## 正解数推移
-![正解数推移](score_history_plot.jpeg)
-
-EOF
+        echo "# 📊 プロ野球順位予想" > README.md
+        echo "" >> README.md
+        echo "最終更新日: $TODAY" >> README.md
+        echo "" >> README.md
+        echo "## 最新順位表" >> README.md
+        echo "![最新順位表](ranking_table.jpeg)" >> README.md
+        echo "" >> README.md
+        echo "## 正解数推移" >> README.md
+        echo "![正解数推移](score_history_plot.jpeg)" >> README.md
 
     - name: Commit & Push
       run: |
