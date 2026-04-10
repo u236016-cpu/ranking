@@ -32,12 +32,22 @@ jobs:
     - name: Run script
       run: python main.py
 
-    - name: Update README
+    - name: Update README (overwrite)
       run: |
-        cp README.md README.md.bak
-        grep -v '!\[最新順位表\]' README.md.bak | grep -v '!\[正解数推移\]' > README.md
-        echo "![最新順位表](weekly_tables/ranking_table_$(date +'%Y-%m-%d').jpeg)" >> README.md
-        echo "![正解数推移](score_history_plot.jpeg)" >> README.md
+        TODAY=$(date +'%Y-%m-%d')
+
+        cat << EOF > README.md
+# 📊 プロ野球順位予想
+
+最終更新日: ${TODAY}
+
+## 最新順位表
+![最新順位表](ranking_table.jpeg)
+
+## 正解数推移
+![正解数推移](score_history_plot.jpeg)
+
+EOF
 
     - name: Commit & Push
       run: |
