@@ -1,5 +1,9 @@
+# 📊 プロ野球順位予想
 
-# 観戦コンテンツ
+最終更新日: 2026-04-10
 
-![最新順位表](weekly_tables/ranking_table_2026-04-10.jpeg)
+## 最新順位表
+![最新順位表](ranking_table.jpeg)
+
+## 正解数推移
 ![正解数推移](score_history_plot.jpeg)
