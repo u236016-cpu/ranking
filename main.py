@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 # ------------------------
-# ★ 日本語フォント設定（最重要）
+# 日本語フォント設定
 # ------------------------
 matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
 matplotlib.rcParams['axes.unicode_minus'] = False
@@ -88,7 +88,11 @@ def create_ranking_table_image(current_ranks, df_pred, output_path, current_date
     caption = f"順位表（更新日: {current_date}）"
     styled = pred_matrix.style.apply(highlight_cells, axis=1).set_caption(caption)
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    # フォルダ対応（ルートでもOKにする）
+    dir_name = os.path.dirname(output_path)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
+
     dfi.export(styled, output_path)
     print(f"{output_path} に保存しました")
 
@@ -152,7 +156,8 @@ def main():
     current_ranks = fetch_current_ranks()
     df_pred = load_prediction_csv()
 
-    ranking_path = f"weekly_tables/ranking_table_{current_date}.jpeg"
+    # ★ ルートに1枚だけ保存
+    ranking_path = "ranking_table.jpeg"
     create_ranking_table_image(current_ranks, df_pred, ranking_path, current_date)
 
     names = df_pred["名前"].tolist()
