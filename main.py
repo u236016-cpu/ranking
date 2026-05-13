@@ -14,27 +14,25 @@ import dataframe_image as dfi
 import os
 from datetime import datetime
 
-
 # =========================================================
 # 日本語フォント
 # =========================================================
 matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-
 # =========================================================
-# 白背景テーマ
+# DAZN風テーマ
 # =========================================================
-BG_COLOR = "#FFFFFF"
-GRID_COLOR = "#E6E6E6"
-TEXT_COLOR = "#111111"
+BG_COLOR = "#0A0A0A"
+GRID_COLOR = "#333333"
+TEXT_COLOR = "#F5F5F5"
 
 LINE_COLORS = [
-    "#00A8FF", "#00C853", "#FFD600", "#FF5252", "#7C4DFF",
-    "#FF9100", "#2962FF", "#64DD17", "#D500F9", "#000000",
+    "#00E5FF", "#00FF85", "#FFD600", "#FF6B6B", "#9C6BFF",
+    "#FF9F1C", "#4D96FF", "#B6FF00", "#FF4DDA", "#FFFFFF",
 ]
 
-plt.style.use("default")
+plt.style.use("dark_background")
 
 
 # =========================================================
@@ -124,7 +122,7 @@ def create_ranking_table_image(current_ranks, df_pred, output_path, current_date
             if col == "現在順位":
                 colors.append("")
             elif row[col] == current_ranks[idx]:
-                colors.append("background-color: #B3E5FC")  # うす青ハイライト
+                colors.append("background-color: #00FF85")
             else:
                 colors.append("")
         return colors
@@ -164,7 +162,7 @@ def load_or_create_score_history(csv_path, current_date, correct_counts, names):
 
 
 # =========================================================
-# ⑤ ラインレースGIF（白背景・1位強調・停止あり）
+# ⑤ DAZN風ラインGIF（FINALなし・1秒停止・1位強調・凡例あり）
 # =========================================================
 def create_dazn_style_race_chart(df_history, output_path, current_date):
 
@@ -185,15 +183,20 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
 
         color = LINE_COLORS[i % len(LINE_COLORS)]
 
-        line, = ax.plot([], [], linewidth=4, color=color, alpha=0.9)
+        line, = ax.plot([], [], linewidth=4, color=color, alpha=0.95)
         point, = ax.plot([], [], "o", color=color, markersize=12)
         label = ax.text(0, 0, "", fontsize=16, color=TEXT_COLOR, fontweight="bold")
+
+        line.set_path_effects([
+            pe.Stroke(linewidth=8, foreground=color, alpha=0.25),
+            pe.Normal()
+        ])
 
         lines[user] = line
         points[user] = point
         labels[user] = label
 
-    # 軸
+    # 軸設定
     ax.set_ylim(0, 12)
     ax.set_xlim(df.index.min(), df.index.max())
     ax.set_yticks(range(13))
@@ -201,12 +204,12 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
     ax.tick_params(colors=TEXT_COLOR, labelsize=14)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
 
-    ax.grid(True, color=GRID_COLOR, linestyle="--", alpha=0.5)
+    ax.grid(True, color=GRID_COLOR, linestyle="--", alpha=0.35)
 
     for spine in ax.spines.values():
         spine.set_visible(False)
 
-    # 凡例（上）
+    # 凡例（DAZN風・上部）
     from matplotlib.lines import Line2D
 
     legend_handles = [
@@ -227,12 +230,13 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
     for text in legend.get_texts():
         text.set_color(TEXT_COLOR)
 
-    # 停止設定
+    # 停止演出設定（最後1秒）
     fps = 8
     pause_seconds = 1
-    total_frames = len(df) + fps * pause_seconds
+    extra_frames = fps * pause_seconds
+    total_frames = len(df) + extra_frames
 
-    # 更新
+    # アニメーション更新
     def update(frame):
 
         actual_frame = min(frame, len(df) - 1)
@@ -250,29 +254,27 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
             x = current_data.index
             y = current_data[user]
 
-            # ------------------------
-            # 1位強調（ライン）
-            # ------------------------
+            # ライン（1位強調）
             lw = 4
-            alpha = 0.85
+            alpha = 0.95
 
             if user == leader:
-                lw = 8
+                lw = 7
                 alpha = 1.0
 
             lines[user].set_data(x, y)
             lines[user].set_linewidth(lw)
             lines[user].set_alpha(alpha)
 
-            # ------------------------
-            # 点
-            # ------------------------
+            # 点（1位強調）
             points[user].set_data([x[-1]], [y.iloc[-1]])
-            points[user].set_markersize(16 if user == leader else 12)
 
-            # ------------------------
+            if user == leader:
+                points[user].set_markersize(16)
+            else:
+                points[user].set_markersize(12)
+
             # ラベル
-            # ------------------------
             labels[user].set_position((x[-1], y.iloc[-1]))
             labels[user].set_text(f"{rank+1}. {user} {int(y.iloc[-1])}")
             labels[user].set_color(color)
@@ -281,7 +283,7 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
                 labels[user].set_fontsize(20)
                 labels[user].set_fontweight("bold")
             else:
-                labels[user].set_fontsize(14)
+                labels[user].set_fontsize(16)
                 labels[user].set_fontweight("bold")
 
         return list(lines.values()) + list(points.values()) + list(labels.values())
