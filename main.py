@@ -34,6 +34,7 @@ LINE_COLORS = [
 
 plt.style.use("dark_background")
 
+
 # =========================================================
 # ① 現在順位取得
 # =========================================================
@@ -146,7 +147,11 @@ def load_or_create_score_history(csv_path, current_date, correct_counts, names):
     else:
         df = pd.DataFrame()
 
-    new_row = pd.Series(correct_counts, index=names, name=pd.to_datetime(current_date))
+    new_row = pd.Series(
+        correct_counts,
+        index=names,
+        name=pd.to_datetime(current_date)
+    )
 
     df = pd.concat([df, new_row.to_frame().T])
     df = df[~df.index.duplicated(keep="last")]
@@ -157,7 +162,7 @@ def load_or_create_score_history(csv_path, current_date, correct_counts, names):
 
 
 # =========================================================
-# ⑤ DAZN風ラインGIF（最後1秒停止付き）
+# ⑤ DAZN風ラインGIF（FINALなし・1秒停止・1位強調・凡例あり）
 # =========================================================
 def create_dazn_style_race_chart(df_history, output_path, current_date):
 
@@ -173,7 +178,9 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
     points = {}
     labels = {}
 
+    # 初期描画
     for i, user in enumerate(users):
+
         color = LINE_COLORS[i % len(LINE_COLORS)]
 
         line, = ax.plot([], [], linewidth=4, color=color, alpha=0.95)
@@ -189,6 +196,7 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
         points[user] = point
         labels[user] = label
 
+    # 軸設定
     ax.set_ylim(0, 12)
     ax.set_xlim(df.index.min(), df.index.max())
     ax.set_yticks(range(13))
@@ -198,31 +206,46 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
 
     ax.grid(True, color=GRID_COLOR, linestyle="--", alpha=0.35)
 
-    ax.set_title(
-        f"NPB Prediction Race\n{current_date}",
-        fontsize=28,
-        color=TEXT_COLOR,
-        fontweight="bold",
-        pad=25
-    )
-
     for spine in ax.spines.values():
         spine.set_visible(False)
 
+    # 凡例（DAZN風・上部）
+    from matplotlib.lines import Line2D
+
+    legend_handles = [
+        Line2D([0], [0], color=LINE_COLORS[i % len(LINE_COLORS)], lw=6)
+        for i in range(len(users))
+    ]
+
+    legend = ax.legend(
+        legend_handles,
+        users,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=5,
+        frameon=False,
+        fontsize=12
+    )
+
+    for text in legend.get_texts():
+        text.set_color(TEXT_COLOR)
+
+    # 停止演出設定（最後1秒）
     fps = 8
     pause_seconds = 1
     extra_frames = fps * pause_seconds
     total_frames = len(df) + extra_frames
 
+    # アニメーション更新
     def update(frame):
 
-        # 最後で1秒停止
         actual_frame = min(frame, len(df) - 1)
-
         current_data = df.iloc[:actual_frame + 1]
 
         latest = current_data.iloc[-1].sort_values(ascending=False)
         sorted_users = latest.index.tolist()
+
+        leader = sorted_users[0]
 
         for rank, user in enumerate(sorted_users):
 
@@ -231,27 +254,37 @@ def create_dazn_style_race_chart(df_history, output_path, current_date):
             x = current_data.index
             y = current_data[user]
 
-            lines[user].set_data(x, y)
+            # ライン（1位強調）
+            lw = 4
+            alpha = 0.95
 
+            if user == leader:
+                lw = 7
+                alpha = 1.0
+
+            lines[user].set_data(x, y)
+            lines[user].set_linewidth(lw)
+            lines[user].set_alpha(alpha)
+
+            # 点（1位強調）
             points[user].set_data([x[-1]], [y.iloc[-1]])
 
+            if user == leader:
+                points[user].set_markersize(16)
+            else:
+                points[user].set_markersize(12)
+
+            # ラベル
             labels[user].set_position((x[-1], y.iloc[-1]))
             labels[user].set_text(f"{rank+1}. {user} {int(y.iloc[-1])}")
             labels[user].set_color(color)
 
-        # 最後だけFINAL表示
-        if frame >= len(df):
-            ax.text(
-                0.5, 0.5,
-                "FINAL",
-                transform=ax.transAxes,
-                fontsize=50,
-                color="white",
-                ha="center",
-                va="center",
-                alpha=0.8,
-                fontweight="bold"
-            )
+            if user == leader:
+                labels[user].set_fontsize(20)
+                labels[user].set_fontweight("bold")
+            else:
+                labels[user].set_fontsize(16)
+                labels[user].set_fontweight("bold")
 
         return list(lines.values()) + list(points.values()) + list(labels.values())
 
