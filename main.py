@@ -1,38 +1,75 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.dates as mdates
+import matplotlib.patheffects as pe
+
+from matplotlib.animation import FuncAnimation
+
 import requests
 from bs4 import BeautifulSoup
+
 import dataframe_image as dfi
+
 import os
 from datetime import datetime
 
-# ------------------------
-# 日本語フォント設定
-# ------------------------
+# =========================================================
+# 日本語フォント
+# =========================================================
 matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-# ------------------------
+# =========================================================
+# DAZN風テーマ
+# =========================================================
+BG_COLOR = "#0A0A0A"
+GRID_COLOR = "#333333"
+TEXT_COLOR = "#F5F5F5"
+
+LINE_COLORS = [
+    "#00E5FF", "#00FF85", "#FFD600", "#FF6B6B", "#9C6BFF",
+    "#FF9F1C", "#4D96FF", "#B6FF00", "#FF4DDA", "#FFFFFF",
+]
+
+plt.style.use("dark_background")
+
+# =========================================================
 # ① 現在順位取得
-# ------------------------
+# =========================================================
 def fetch_current_ranks():
     url = "https://baseball.yahoo.co.jp/npb/standings/"
     headers = {"User-Agent": "Mozilla/5.0"}
+
     res = requests.get(url, headers=headers)
     res.encoding = "utf-8"
+
     soup = BeautifulSoup(res.text, "html.parser")
     tables = soup.find_all("table")
 
-    central = [row.find_all("td")[1].text.strip() for row in tables[0].find_all("tr")[1:]]
-    pacific = [row.find_all("td")[1].text.strip() for row in tables[1].find_all("tr")[1:]]
+    central = [
+        row.find_all("td")[1].text.strip()
+        for row in tables[0].find_all("tr")[1:]
+    ]
+    pacific = [
+        row.find_all("td")[1].text.strip()
+        for row in tables[1].find_all("tr")[1:]
+    ]
+
     return central + pacific
 
-# ------------------------
+
+# =========================================================
 # ② CSV読み込み
-# ------------------------
+# =========================================================
 def load_prediction_csv(csv_path="ranking_export.csv"):
-    columns = ["名前"] + [f"セ{i+1}" for i in range(6)] + [f"パ{i+1}" for i in range(6)]
+
+    columns = (
+        ["名前"] +
+        [f"セ{i+1}" for i in range(6)] +
+        [f"パ{i+1}" for i in range(6)]
+    )
+
     df_pred = pd.read_csv(csv_path, header=None, names=columns)
 
     team_replace = {
@@ -41,14 +78,17 @@ def load_prediction_csv(csv_path="ranking_export.csv"):
         "DeNa": "DeNA",
         "日ハム": "日本ハム"
     }
-    df_pred = df_pred.replace(team_replace)
-    return df_pred
 
-# ------------------------
-# ③ 順位表画像
-# ------------------------
+    return df_pred.replace(team_replace)
+
+
+# =========================================================
+# ③ 順位表JPEG
+# =========================================================
 def create_ranking_table_image(current_ranks, df_pred, output_path, current_date):
+
     names = df_pred["名前"].tolist()
+
     pred_matrix = df_pred.drop(columns="名前").T
     pred_matrix.columns = names
 
@@ -57,110 +97,198 @@ def create_ranking_table_image(current_ranks, df_pred, output_path, current_date
 
     pred_matrix.insert(0, "現在順位", current_ranks)
 
-    # 正解数
     correct_counts = []
     for _, row in df_pred.iterrows():
         pred_list = row[1:].tolist()
-        count = sum([pred_list[i] == current_ranks[i] for i in range(len(current_ranks))])
-        correct_counts.append(count)
+        correct_counts.append(
+            sum(pred_list[i] == current_ranks[i] for i in range(len(current_ranks)))
+        )
 
     pred_matrix.loc["正解数"] = [""] + correct_counts
-
-    def highlight_cells(row):
-        if row.name == "正解数":
-            return [''] * len(row)
-
-        colors = []
-        row_idx = pred_matrix.index.get_loc(row.name)
-        for col in row.index:
-            if col == "現在順位":
-                colors.append('')
-            elif row[col] == current_ranks[row_idx]:
-                colors.append('background-color: lightgreen')
-            else:
-                colors.append('')
-        return colors
 
     counts_row = pred_matrix.loc["正解数", pred_matrix.columns[1:]]
     sorted_cols = ["現在順位"] + counts_row.sort_values(ascending=False).index.tolist()
     pred_matrix = pred_matrix[sorted_cols]
 
-    caption = f"順位表（更新日: {current_date}）"
-    styled = pred_matrix.style.apply(highlight_cells, axis=1).set_caption(caption)
+    def highlight_cells(row):
+        if row.name == "正解数":
+            return [""] * len(row)
 
-    # フォルダ対応（ルートでもOKにする）
-    dir_name = os.path.dirname(output_path)
-    if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
+        colors = []
+        idx = pred_matrix.index.get_loc(row.name)
+
+        for col in row.index:
+            if col == "現在順位":
+                colors.append("")
+            elif row[col] == current_ranks[idx]:
+                colors.append("background-color: #00FF85")
+            else:
+                colors.append("")
+        return colors
+
+    styled = (
+        pred_matrix.style
+        .apply(highlight_cells, axis=1)
+        .set_caption(f"順位表（更新日: {current_date}）")
+    )
 
     dfi.export(styled, output_path)
     print(f"{output_path} に保存しました")
 
-# ------------------------
+
+# =========================================================
 # ④ 履歴管理
-# ------------------------
+# =========================================================
 def load_or_create_score_history(csv_path, current_date, correct_counts, names):
+
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
     else:
         df = pd.DataFrame()
 
-    new_row = pd.Series(data=correct_counts, index=names)
-    new_row.name = pd.to_datetime(current_date)
+    new_row = pd.Series(correct_counts, index=names, name=pd.to_datetime(current_date))
 
     df = pd.concat([df, new_row.to_frame().T])
-    df = df[~df.index.duplicated(keep='last')]
+    df = df[~df.index.duplicated(keep="last")]
     df.sort_index(inplace=True)
     df.to_csv(csv_path)
 
     return df
 
-# ------------------------
-# ⑤ グラフ
-# ------------------------
-def create_score_history_plot(df, output_path, current_date):
-    import matplotlib.dates as mdates
 
+# =========================================================
+# ⑤ DAZN風ラインGIF（最後1秒停止付き）
+# =========================================================
+def create_dazn_style_race_chart(df_history, output_path, current_date):
+
+    df = df_history.copy()
     df.index = pd.to_datetime(df.index)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    colors = plt.cm.tab20.colors
+    fig, ax = plt.subplots(figsize=(16, 9), facecolor=BG_COLOR)
+    ax.set_facecolor(BG_COLOR)
 
-    for i, user in enumerate(df.columns):
-        color = colors[i % 20]
-        ax.plot(df.index, df[user], marker='o', color=color, label=user)
-        ax.text(df.index[-1], df[user].iloc[-1], str(df[user].iloc[-1]),
-                fontsize=9, color=color)
+    users = df.columns.tolist()
+
+    lines = {}
+    points = {}
+    labels = {}
+
+    for i, user in enumerate(users):
+        color = LINE_COLORS[i % len(LINE_COLORS)]
+
+        line, = ax.plot([], [], linewidth=4, color=color, alpha=0.95)
+        point, = ax.plot([], [], "o", color=color, markersize=12)
+        label = ax.text(0, 0, "", fontsize=16, color=TEXT_COLOR, fontweight="bold")
+
+        line.set_path_effects([
+            pe.Stroke(linewidth=8, foreground=color, alpha=0.25),
+            pe.Normal()
+        ])
+
+        lines[user] = line
+        points[user] = point
+        labels[user] = label
 
     ax.set_ylim(0, 12)
+    ax.set_xlim(df.index.min(), df.index.max())
     ax.set_yticks(range(13))
-    ax.set_title(f"予想 正解数 推移（更新日: {current_date}）")
-    ax.legend()
 
+    ax.tick_params(colors=TEXT_COLOR, labelsize=14)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
 
-    plt.xticks(rotation=45)
-    plt.grid()
-    plt.tight_layout()
-    plt.savefig(output_path)
+    ax.grid(True, color=GRID_COLOR, linestyle="--", alpha=0.35)
+
+    ax.set_title(
+        f"NPB Prediction Race\n{current_date}",
+        fontsize=28,
+        color=TEXT_COLOR,
+        fontweight="bold",
+        pad=25
+    )
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    fps = 8
+    pause_seconds = 1
+    extra_frames = fps * pause_seconds
+    total_frames = len(df) + extra_frames
+
+    def update(frame):
+
+        # 最後で1秒停止
+        actual_frame = min(frame, len(df) - 1)
+
+        current_data = df.iloc[:actual_frame + 1]
+
+        latest = current_data.iloc[-1].sort_values(ascending=False)
+        sorted_users = latest.index.tolist()
+
+        for rank, user in enumerate(sorted_users):
+
+            color = LINE_COLORS[users.index(user) % len(LINE_COLORS)]
+
+            x = current_data.index
+            y = current_data[user]
+
+            lines[user].set_data(x, y)
+
+            points[user].set_data([x[-1]], [y.iloc[-1]])
+
+            labels[user].set_position((x[-1], y.iloc[-1]))
+            labels[user].set_text(f"{rank+1}. {user} {int(y.iloc[-1])}")
+            labels[user].set_color(color)
+
+        # 最後だけFINAL表示
+        if frame >= len(df):
+            ax.text(
+                0.5, 0.5,
+                "FINAL",
+                transform=ax.transAxes,
+                fontsize=50,
+                color="white",
+                ha="center",
+                va="center",
+                alpha=0.8,
+                fontweight="bold"
+            )
+
+        return list(lines.values()) + list(points.values()) + list(labels.values())
+
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=total_frames,
+        interval=150,
+        blit=False,
+        repeat=False
+    )
+
+    ani.save(output_path, writer="pillow", fps=fps)
     plt.close()
 
     print(f"{output_path} に保存しました")
 
-# ------------------------
+
+# =========================================================
 # メイン
-# ------------------------
+# =========================================================
 def main():
+
     current_date = datetime.now().strftime("%Y-%m-%d")
 
     current_ranks = fetch_current_ranks()
     df_pred = load_prediction_csv()
 
-    # ★ ルートに1枚だけ保存
-    ranking_path = "ranking_table.jpeg"
-    create_ranking_table_image(current_ranks, df_pred, ranking_path, current_date)
+    create_ranking_table_image(
+        current_ranks,
+        df_pred,
+        "ranking_table.jpeg",
+        current_date
+    )
 
     names = df_pred["名前"].tolist()
+
     correct_counts = [
         sum(row[1:].tolist()[i] == current_ranks[i] for i in range(len(current_ranks)))
         for _, row in df_pred.iterrows()
@@ -173,11 +301,12 @@ def main():
         names
     )
 
-    create_score_history_plot(
+    create_dazn_style_race_chart(
         df_history,
-        "score_history_plot.jpeg",
+        "dazn_race.gif",
         current_date
     )
+
 
 if __name__ == "__main__":
     main()
