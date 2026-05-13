@@ -43,7 +43,7 @@ jobs:
         echo "## 最新順位表" >> README.md
         echo "![最新順位表](ranking_table.jpeg)" >> README.md
         echo "" >> README.md
-        echo "## 正解数レース（DAZN風）" >> README.md
+        echo "## 正解数レース" >> README.md
         echo "![正解数推移](dazn_race.gif)" >> README.md
 
     - name: Commit & Push
