@@ -5,5 +5,5 @@
 ## 最新順位表
 ![最新順位表](ranking_table.jpeg)
 
-## 正解数レース（DAZN風）
+## 正解数レース
 ![正解数推移](dazn_race.gif)
