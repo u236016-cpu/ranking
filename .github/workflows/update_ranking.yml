@@ -27,7 +27,7 @@ jobs:
     - name: Install Python packages
       run: |
         python -m pip install --upgrade pip
-        pip install pandas matplotlib beautifulsoup4 dataframe-image requests
+        pip install pandas matplotlib beautifulsoup4 dataframe-image requests pillow
 
     - name: Run script
       run: python main.py
@@ -43,8 +43,8 @@ jobs:
         echo "## 最新順位表" >> README.md
         echo "![最新順位表](ranking_table.jpeg)" >> README.md
         echo "" >> README.md
-        echo "## 正解数推移" >> README.md
-        echo "![正解数推移](score_history_plot.jpeg)" >> README.md
+        echo "## 正解数レース（DAZN風）" >> README.md
+        echo "![正解数推移](dazn_race.gif)" >> README.md
 
     - name: Commit & Push
       run: |
